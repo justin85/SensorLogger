@@ -140,7 +140,7 @@ public class ResultsActivity extends ListActivity {
     	      setResult(RESULT_OK);
             try {
       	      //((SensorLoggerBinder)connection).submitClassification(((TextView) view).getText().toString());
-				service.submitWithCorrection(((TextView) view).getText().toString());
+				service.submitWithCorrection("CLASSIFIED/"+((TextView) view).getText().toString().toUpperCase());
 			} catch (RemoteException e) {
 	            Log.e(getClass().getName(), "Unable to set state", e);
 			}

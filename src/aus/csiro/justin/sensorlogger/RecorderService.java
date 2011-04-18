@@ -44,15 +44,17 @@ public class RecorderService extends BoundService {
     private static final String TAG = "SensorLoggerService";
 
     public static boolean STARTED = false;
+    public boolean hasGyro = false;
 
     private float[] mags = new float[3];
     private float[] accels = new float[3];
+    private float[] gyro = new float[3];
     private float[] mGData = new float[3];
-    private float[] mMData = new float[3];
-    private float[] mOData = new float[3];
+    //private float[] mMData = new float[3];
+    //private float[] mOData = new float[3];
     private float[] mR = new float[16];
     private float[] mI = new float[16];
-    private float[] mOrientation = new float[3];
+    //private float[] mOrientation = new float[3];
     private SensorManager manager;
     private FileOutputStream stream;
     private OutputStreamWriter writer;
@@ -63,13 +65,27 @@ public class RecorderService extends BoundService {
     private Timer timer;
 
     private volatile int i = 0;
-    private float[] accelValues = new float[3],
+    private float[] accelValues = new float[3],gyroValues = new float[3],
             magValues = new float[3], orientationValues = new float[3];
 
     private float[] data = new float[256];
     private volatile int nextSample = 0;
 
     public static Map<Float[], String> model;
+    
+    private final SensorEventListener gyroListener = new SensorEventListener() {
+		
+		@Override
+		public void onSensorChanged(SensorEvent event) {
+			setGyrolValues(event.values);
+		}
+
+		@Override
+		public void onAccuracyChanged(Sensor sensor, int accuracy) {
+			//Do nothing!
+		}
+		
+	};
 
     private final SensorEventListener accelListener = new SensorEventListener() {
 
@@ -119,6 +135,9 @@ public class RecorderService extends BoundService {
 
     };
 
+    public void setGyrolValues(float[] gyroValues) {
+        this.gyroValues = gyroValues;
+    }
     public void setAccelValues(float[] accelValues) {
         this.accelValues = accelValues;
     }
@@ -151,6 +170,7 @@ public class RecorderService extends BoundService {
     }
 
     public void write() throws RemoteException {
+    	String recordedData;
         try {
 
         	accels=accelValues;
@@ -167,18 +187,52 @@ public class RecorderService extends BoundService {
                 mGData[2]=mR[8]*accels[0]+mR[9]*accels[1]+mR[10]*accels[2];
                 if(mGData[2]<0.00001 && mGData[2]>0 || mGData[0]>-0.00001 && mGData[0]<0) mGData[2]=0.0f;
         	}
-        	writer.write(System.currentTimeMillis() + ":" +
-                    accelValues[SensorManager.DATA_X] + "," +
-                    accelValues[SensorManager.DATA_Y] + "," +
-                    accelValues[SensorManager.DATA_Z] + "," +
-                    magValues[SensorManager.DATA_X] + "," +
-                    magValues[SensorManager.DATA_Y] + "," +
-                    magValues[SensorManager.DATA_Z] + "," +
-                    orientationValues[SensorManager.DATA_X] + "," +
-                    orientationValues[SensorManager.DATA_Y] + "," +
-                    orientationValues[SensorManager.DATA_Z] + "&" + 
-//                    mGData[0]+","+mGData[1]+","+mGData[2]+","+
-                    " ");
+        	
+        	//TODO: Change when justin updates his web app.
+        	
+//        	recordedData = accelValues[SensorManager.DATA_X] + "," +
+//            accelValues[SensorManager.DATA_Y] + "," +
+//            accelValues[SensorManager.DATA_Z] + "," +
+//            magValues[SensorManager.DATA_X] + "," +
+//            magValues[SensorManager.DATA_Y] + "," +
+//            magValues[SensorManager.DATA_Z] + "," +
+//            orientationValues[SensorManager.DATA_X] + "," +
+//            orientationValues[SensorManager.DATA_Y] + "," +
+//            orientationValues[SensorManager.DATA_Z];
+//        	
+//        	if (hasGyro)
+//        		recordedData += "," + gyroValues[SensorManager.DATA_X] + "," +
+//        		gyroValues[SensorManager.DATA_Y] + "," +
+//        		gyroValues[SensorManager.DATA_Z] + "& ";
+//        	else
+//        		recordedData += "& ";
+//          ;
+
+        //TODO: Remove this blog with the top block when just web app is updated.	
+          recordedData = accelValues[SensorManager.DATA_X] + "," +
+          accelValues[SensorManager.DATA_Y] + "," +
+          accelValues[SensorManager.DATA_Z];
+          
+          if (hasGyro)
+        	  recordedData += "," +
+        	  gyroValues[SensorManager.DATA_X] + "," +
+        	  gyroValues[SensorManager.DATA_Y] + "," +
+        	  gyroValues[SensorManager.DATA_Z] + "," +           
+        	  orientationValues[SensorManager.DATA_X] + "," +
+        	  orientationValues[SensorManager.DATA_Y] + "," +
+        	  orientationValues[SensorManager.DATA_Z] + "& ";
+          else
+        	  recordedData += "," +
+        	  magValues[SensorManager.DATA_X] + "," +
+        	  magValues[SensorManager.DATA_Y] + "," +
+        	  magValues[SensorManager.DATA_Z] + "," +
+        	  orientationValues[SensorManager.DATA_X] + "," +
+        	  orientationValues[SensorManager.DATA_Y] + "," +
+        	  orientationValues[SensorManager.DATA_Z] + "& "; 
+
+
+        	writer.write(System.currentTimeMillis() + ":" + recordedData);
+        	
         	tmpwriter.write(System.currentTimeMillis() + ":" +
                     accelValues[SensorManager.DATA_X] + "," +
                     accelValues[SensorManager.DATA_Y] + "," +
@@ -272,8 +326,13 @@ public class RecorderService extends BoundService {
         }
 
         manager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-        List<Sensor> typedSensors = manager.getSensorList(Sensor.TYPE_GYROSCOPE);
         
+        List<Sensor> typedSensors = manager.getSensorList(Sensor.TYPE_GYROSCOPE);
+        if(typedSensors.get(0) != null)
+        {	manager.registerListener(gyroListener, typedSensors.get(0),
+        			SensorManager.SENSOR_DELAY_FASTEST);
+        	hasGyro = true;
+        }
         manager.registerListener(accelListener,
                 manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
                 SensorManager.SENSOR_DELAY_FASTEST);
