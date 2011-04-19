@@ -66,6 +66,7 @@
         <item>Paddling</item>
         <item>Cycling</item>
         <item>Other</item>
+        <item>Cancel</item>
     </string-array>
 
 

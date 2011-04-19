@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
      android:versionCode="17" android:versionName="0.2.4" package="aus.csiro.justin.sensorlogger">
-    <application android:label="Sensor Logger" android:icon="@drawable/icon">
+   	<application android:debuggable="true" android:icon="@drawable/icon" android:label="Avocado Logger">
+    
         <activity android:name=".activities.IntroActivity" android:label="Sensor Logger">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>

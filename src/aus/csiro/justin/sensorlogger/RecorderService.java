@@ -328,7 +328,7 @@ public class RecorderService extends BoundService {
         manager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         
         List<Sensor> typedSensors = manager.getSensorList(Sensor.TYPE_GYROSCOPE);
-        if(typedSensors.get(0) != null)
+        if(typedSensors.size() != 0)
         {	manager.registerListener(gyroListener, typedSensors.get(0),
         			SensorManager.SENSOR_DELAY_FASTEST);
         	hasGyro = true;

@@ -5,7 +5,6 @@
 
 package aus.csiro.justin.sensorlogger.activities;
 
-import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.ProgressDialog;
 import android.content.ComponentName;
@@ -42,156 +41,153 @@ import aus.csiro.justin.sensorlogger.rpc.SensorLoggerBinder;
  */
 public class ResultsActivity extends ListActivity {
 
-    private final Handler handler = new Handler();
-    private AutoCompleteTextView input;
-    private ProgressDialog dialog;
+	private final Handler handler = new Handler();
+	private AutoCompleteTextView input;
+	private ProgressDialog dialog;
 
-    private final TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-                checkStage();
-            }
-    };
+	private final TimerTask task = new TimerTask() {
+		@Override
+		public void run() {
+			checkStage();
+		}
+	};
 
-    private ServiceConnection connection = new ServiceConnection() {
+	private ServiceConnection connection = new ServiceConnection() {
 
-        public void onServiceConnected(ComponentName arg0, IBinder arg1) {
-            service = SensorLoggerBinder.Stub.asInterface(arg1);
-            serviceBound();
-        }
+		public void onServiceConnected(ComponentName arg0, IBinder arg1) {
+			service = SensorLoggerBinder.Stub.asInterface(arg1);
+			serviceBound();
+		}
 
-        public void onServiceDisconnected(ComponentName arg0) {
-            //Toast.makeText(, R.string.error_disconnected, Toast.LENGTH_LONG);
-            setResult(RESULT_CANCELED);
-            finish();
-        }
-    };
-    SensorLoggerBinder service = null;
+		public void onServiceDisconnected(ComponentName arg0) {
+			//Toast.makeText(, R.string.error_disconnected, Toast.LENGTH_LONG);
+			setResult(RESULT_CANCELED);
+			finish();
+		}
+	};
+	SensorLoggerBinder service = null;
 
-//  private final OnClickListener noListener = new OnClickListener() {
+	protected void serviceBound() {
 
-//        public void onClick(View arg0) {
-//            FlurryAgent.onEvent("results_no_click");
-//
-//            findViewById(R.id.resultsno).setEnabled(false);
-//            findViewById(R.id.resultsyes).setEnabled(false);
-//
-//            input = new AutoCompleteTextView(ResultsActivity.this);
-//            input.setAdapter(new ArrayAdapter<String>(ResultsActivity.this,
-//                    android.R.layout.simple_dropdown_item_1line, new String[] {
-//                "Walking", "Walking (up stairs)", "Walking (down stairs)",
-//                "On a bus", "In a car", "Standing", "Sitting", "Dancing"
-//            }));
-//            input.setSingleLine();
-//            input.setThreshold(0);
-//
-//            AlertDialog.Builder adb = new AlertDialog.Builder(ResultsActivity.this);
-//            adb.setView(input).setCancelable(false);
-//            adb.setTitle(R.string.correct_title);
-//            adb.setMessage(R.string.correct_activity);
-//            adb.setPositiveButton(R.string.correct_button, correctionListener);
-//            adb.create().show();
-//        }
-//    };
+		try {
+			String name = "activity_" + service.getClassification().substring(11)
+			.replace("/", "_").toLowerCase();
 
-    protected void serviceBound() {
+			//int res = getResources().getIdentifier(name, "string", "aus.csiro.justin.sensorlogger");
+			//((TextView) findViewById(R.id.resultsresultaaa)).setText(res);
+		} catch (RemoteException ex) {
+			Log.e(getClass().getName(), "Unable to get classification", ex);
+		}
 
-        try {
-            String name = "activity_" + service.getClassification().substring(11)
-                    .replace("/", "_").toLowerCase();
+		handler.postDelayed(task, 500);
+	}
 
-            //int res = getResources().getIdentifier(name, "string", "aus.csiro.justin.sensorlogger");
-            //((TextView) findViewById(R.id.resultsresultaaa)).setText(res);
-        } catch (RemoteException ex) {
-            Log.e(getClass().getName(), "Unable to get classification", ex);
-        }
+	/** {@inheritDoc} */
+	@Override
+	public void onCreate(Bundle savedInstanceState) {
 
-        handler.postDelayed(task, 500);
-    }
+		super.onCreate(savedInstanceState);
 
-    /** {@inheritDoc} */
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-    	
-    	super.onCreate(savedInstanceState);
+		// It is not ideal, but we have to set content first because the super.OnCreate
+		// calls the service bind initially that then calls serviceBound here and expects
+		// the layout.
+		//setContentView(R.layout.list_item);
+		String[] countries = getResources().getStringArray(R.array.activity_list);
 
-        // It is not ideal, but we have to set content first because the super.OnCreate
-    	// calls the service bind initially that then calls serviceBound here and expects
-    	// the layout.
-    	//setContentView(R.layout.list_item);
-    	String[] countries = getResources().getStringArray(R.array.activity_list);
-    	
-        startService(new Intent(this, SensorLoggerService.class));
+		startService(new Intent(this, SensorLoggerService.class));
 
-        bindService(new Intent(this, SensorLoggerService.class), connection,
-                BIND_AUTO_CREATE);
+		bindService(new Intent(this, SensorLoggerService.class), connection,
+				BIND_AUTO_CREATE);
 
-    	setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, countries));
-    	
-    	  ListView lv = getListView();
-    	  lv.setTextFilterEnabled(true);
+		setListAdapter(new ArrayAdapter<String>(this, R.layout.list_item, countries));
 
-    	  lv.setOnItemClickListener(new OnItemClickListener() {
-    	    public void onItemClick(AdapterView<?> parent, View view,
-    	        int position, long id) {
-    	      // When clicked, show a toast with the TextView text
-    	      Toast.makeText(getApplicationContext(), ((TextView) view).getText(),
-    	          Toast.LENGTH_SHORT).show();
-    	      setResult(RESULT_OK);
-            try {
-      	      //((SensorLoggerBinder)connection).submitClassification(((TextView) view).getText().toString());
-				service.submitWithCorrection("CLASSIFIED/"+((TextView) view).getText().toString().toUpperCase());
-			} catch (RemoteException e) {
-	            Log.e(getClass().getName(), "Unable to set state", e);
+		ListView lv = getListView();
+		lv.setTextFilterEnabled(true);
+
+		lv.setOnItemClickListener(new OnItemClickListener() {
+			public void onItemClick(AdapterView<?> parent, View view,
+					int position, long id) {
+				// When clicked, show a toast with the TextView text
+				String strCategory = ((TextView) view).getText().toString().toUpperCase();
+				try {
+					if(strCategory.compareTo("CANCEL") == 0)
+					{
+						service.setState(1);
+
+						Toast.makeText(getApplicationContext(), "Canceled recording, logger goes to count down",
+								Toast.LENGTH_SHORT).show();
+						setResult(RESULT_OK);
+
+					}
+					else
+					{
+						Toast.makeText(getApplicationContext(), "Uploading " +((TextView) view).getText().toString().toUpperCase() + " data",
+								Toast.LENGTH_LONG).show();
+						setResult(RESULT_OK);
+
+						service.submitWithCorrection("CLASSIFIED/"+strCategory);
+					}
+				} catch (RemoteException e) {
+					Log.e(getClass().getName(), "Unable to set state", e);
+				}
 			}
-    	    }
-    	  });
+		});
 
-        
-        //String[] countries = getResources().getStringArray(R.array.activity_list);
 
-        //((Button) findViewById(R.id.resultsyes)).setOnClickListener(yesListener);
-        //((Button) findViewById(R.id.resultsno)).setOnClickListener(noListener);
-    }
+		//String[] countries = getResources().getStringArray(R.array.activity_list);
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        
-        unbindService(connection);
+		//((Button) findViewById(R.id.resultsyes)).setOnClickListener(yesListener);
+		//((Button) findViewById(R.id.resultsno)).setOnClickListener(noListener);
+	}
 
-    }
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
 
-    void checkStage() {
-        try {
-            if (service.getState() == 7) {
-                FlurryAgent.onEvent("results_to_thanks");
+		unbindService(connection);
 
-                service.setState(8);
-                startActivity(new Intent(this, ThanksActivity.class));
-                finish();
-            } else {
-                handler.postDelayed(task, 500);
-            }
-        } catch (RemoteException ex) {
-            Log.e(getClass().getName(), "Unable to get state", ex);
-        }
-    }
+	}
 
-    /** {@inheritDoc} */
-    @Override
-    protected void onStart() {
-        super.onStart();
+	void checkStage() {
+		try {
+			if (service.getState() == 7) {
+				FlurryAgent.onEvent("results_to_thanks");
 
-        FlurryAgent.onStartSession(this, "TFBJJPQUQX3S1Q6IUHA6");
-    }
+				service.setState(8);
+				startActivity(new Intent(this, ThanksActivity.class));
+				finish();
+			}
+			else if (service.getState() == 1)
+			{
+				FlurryAgent.onEvent("results_to_countdown");
 
-    /** {@inheritDoc} */
-    @Override
-    protected void onStop() {
-        super.onStop();
+				service.setState(2);
+				startActivity(new Intent(this, CountdownActivity.class));
+				finish();
 
-        FlurryAgent.onEndSession(this);
-    }
+			}
+			else {
+				handler.postDelayed(task, 100);
+			}
+		} catch (RemoteException ex) {
+			Log.e(getClass().getName(), "Unable to get state", ex);
+		}
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	protected void onStart() {
+		super.onStart();
+
+		FlurryAgent.onStartSession(this, "TFBJJPQUQX3S1Q6IUHA6");
+	}
+
+	/** {@inheritDoc} */
+	@Override
+	protected void onStop() {
+		super.onStop();
+
+		FlurryAgent.onEndSession(this);
+	}
 
 }
